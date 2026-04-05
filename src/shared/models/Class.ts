@@ -1,11 +1,13 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
+import Student from './Student';
 
 class Class extends Model {
   id!: number;
   code!: string;
   name!: string;
   subjectId!: number;
+  students?: Student[];
 }
 
 Class.init(
