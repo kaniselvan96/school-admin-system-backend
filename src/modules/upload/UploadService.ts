@@ -40,7 +40,33 @@ export class UploadService {
     const classStudentLinks = new Set<string>(); //class-student relationships
     const teacherClassLinks = new Set<string>(); //teacher-class relationships
 
-    for (const item of csvData) {
+    for (const [index, item] of csvData.entries()) {
+      // Validate all required fields as per model definitions
+      const missingFields: string[] = [];
+
+      // Teacher fields (email, name required)
+      if (!item.teacherEmail) missingFields.push('teacherEmail');
+      if (!item.teacherName) missingFields.push('teacherName');
+
+      // Student fields (email, name required)
+      if (!item.studentEmail) missingFields.push('studentEmail');
+      if (!item.studentName) missingFields.push('studentName');
+
+      // Class fields (code, name required)
+      if (!item.classCode) missingFields.push('classCode');
+      if (!item.classname) missingFields.push('classname');
+
+      // Subject fields (code, name required)
+      if (!item.subjectCode) missingFields.push('subjectCode');
+      if (!item.subjectName) missingFields.push('subjectName');
+
+      if (missingFields.length > 0) {
+        LOG.warn(
+          `Skipping row ${index + 1}: missing required fields [${missingFields.join(', ')}]`,
+        );
+        continue;
+      }
+
       // Process teachers
       if (!teachers.has(item.teacherEmail)) {
         teachers.set(item.teacherEmail, {
