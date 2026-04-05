@@ -1,12 +1,12 @@
 import Express from 'express';
-import DataImportController from './controllers/DataImportController';
-import HealthcheckController from './controllers/HealthcheckController';
+import HealthcheckController from './shared/controllers/HealthcheckController';
 import UploadRoutes from './modules/upload/UploadRoutes';
+import ClassRoutes from './modules/classes/ClassRoutes';
 
 const router = Express.Router();
 
-router.use('/', DataImportController);
 router.use('/', HealthcheckController);
 router.use('/', UploadRoutes);
+router.use('/', ClassRoutes);
 
 export default router;

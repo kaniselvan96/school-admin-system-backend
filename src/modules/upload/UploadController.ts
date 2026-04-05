@@ -1,16 +1,18 @@
 import Express, { RequestHandler } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import Logger from '../../config/logger';
-import upload from '../../config/multer';
-import { convertCsvToJson } from '../../utils';
+import Logger from '../../shared/config/logger';
+import upload from '../../shared/config/multer';
+import { convertCsvToJson } from '../../shared/utils';
+import { UploadService } from './UploadService';
 
 const UploadController = Express.Router();
 const LOG = new Logger('UploadController.js');
+const uploadService = new UploadService();
 
 const uploadHandler: RequestHandler = async (req, res) => {
   try {
     const { file } = req;
-    
+
     if (!file) {
       LOG.warn('No file uploaded');
       return res
@@ -20,6 +22,10 @@ const uploadHandler: RequestHandler = async (req, res) => {
       LOG.info(`File uploaded: ${file.originalname}`);
       const data = await convertCsvToJson(file.path);
 
+      // Process the CSV data
+      await uploadService.processCsvData(data);
+
+      LOG.info('CSV data uploaded to database successfully');
       return res.sendStatus(StatusCodes.NO_CONTENT);
     }
   } catch (error) {

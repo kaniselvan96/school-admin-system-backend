@@ -11,4 +11,4 @@ export const convertCsvToJson = (filePath: string): Promise<CsvItem[]> => {
     stream.on('end', () => resolve(results));
     stream.on('error', (err) => reject(err));
   });
-}
+};
