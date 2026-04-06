@@ -1,4 +1,4 @@
-import { CsvItem } from 'CsvItem';
+import { CsvItemDto } from './UploadDto';
 import {
   Teacher,
   Student,
@@ -27,7 +27,7 @@ export class UploadService {
     });
   }
 
-  private parseCsv(csvData: CsvItem[]) {
+  private parseCsv(csvData: CsvItemDto[]) {
     const teachers = new Map<string, { name: string; email: string }>();
     const students = new Map<
       string,
@@ -43,33 +43,31 @@ export class UploadService {
     >();
     const subjects = new Map<string, { code: string; name: string }>();
     const classStudentTeacherLinks = new Set<string>(); // Teacher teaches Student in Class for Subject
+    const studentSubjectClass = new Map<string, string>(); // Track which class a student takes each subject in
 
     for (const [index, item] of csvData.entries()) {
-      // Validate all required fields as per model definitions
-      const missingFields: string[] = [];
+      // Validate: student can only take each subject in one class - latest data replaced
+      const studentSubjectKey = `${item.studentEmail}:${item.subjectCode}`;
+      const existingClass = studentSubjectClass.get(studentSubjectKey);
 
-      // Teacher fields (email, name required)
-      if (!item.teacherEmail) missingFields.push('teacherEmail');
-      if (!item.teacherName) missingFields.push('teacherName');
-
-      // Student fields (email, name required)
-      if (!item.studentEmail) missingFields.push('studentEmail');
-      if (!item.studentName) missingFields.push('studentName');
-
-      // Class fields (code, name required)
-      if (!item.classCode) missingFields.push('classCode');
-      if (!item.classname) missingFields.push('classname');
-
-      // Subject fields (code, name required)
-      if (!item.subjectCode) missingFields.push('subjectCode');
-      if (!item.subjectName) missingFields.push('subjectName');
-
-      if (missingFields.length > 0) {
-        LOG.warn(
-          `Skipping row ${index + 1}: missing required fields [${missingFields.join(', ')}]`,
+      if (existingClass && existingClass !== item.classCode) {
+        LOG.info(
+          `Replacing class for student=${item.studentEmail}, subject=${item.subjectCode}: ${existingClass} -> ${item.classCode}`,
         );
-        continue;
+        // Remove old links for this student+subject from the previous class
+        for (const link of classStudentTeacherLinks) {
+          const [, linkStudent, linkClass, linkSubject] = link.split(':');
+          if (
+            linkStudent === item.studentEmail &&
+            linkSubject === item.subjectCode &&
+            linkClass === existingClass
+          ) {
+            classStudentTeacherLinks.delete(link);
+          }
+        }
       }
+
+      studentSubjectClass.set(studentSubjectKey, item.classCode);
 
       // Process teachers
       if (!teachers.has(item.teacherEmail)) {
@@ -106,16 +104,9 @@ export class UploadService {
       }
 
       // Track atomic ClassStudentTeacher relationship: Teacher teaches Student in Class for Subject
-      if (
-        item.teacherEmail &&
-        item.studentEmail &&
-        item.classCode &&
-        item.subjectCode
-      ) {
-        classStudentTeacherLinks.add(
-          `${item.teacherEmail}:${item.studentEmail}:${item.classCode}:${item.subjectCode}`,
-        );
-      }
+      classStudentTeacherLinks.add(
+        `${item.teacherEmail}:${item.studentEmail}:${item.classCode}:${item.subjectCode}`,
+      );
     }
     return {
       teachers,
@@ -123,10 +114,11 @@ export class UploadService {
       classes,
       subjects,
       classStudentTeacherLinks,
+      studentSubjectClass,
     };
   }
 
-  async processCsvData(csvData: CsvItem[]): Promise<void> {
+  async processCsvData(csvData: CsvItemDto[]): Promise<void> {
     try {
       const parsedData = this.parseCsv(csvData);
 
