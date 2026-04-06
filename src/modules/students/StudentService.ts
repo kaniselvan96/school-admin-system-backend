@@ -1,22 +1,20 @@
 import axios from 'axios';
 import Logger from '../../shared/config/logger';
 import { Student, Class } from '../../shared/models';
+import {
+  ExternalStudentsResponseSchema,
+  ExternalStudent,
+  StudentItem,
+} from './StudentDto';
 
 const LOG = new Logger('StudentService.js');
-
-export interface StudentItem {
-  id: number;
-  name: string;
-  email: string;
-  isExternal: boolean;
-}
 
 export class StudentService {
   private readonly EXTERNAL_API_URL = 'http://localhost:5001/students';
   private readonly MAX_STUDENTS = 500;
 
   private mapStudentsToItems(
-    students: Student[],
+    students: ExternalStudent[],
     isExternal: boolean,
   ): StudentItem[] {
     return students.map((student) => ({
@@ -50,8 +48,13 @@ export class StudentService {
         );
       }
 
-      if (response.data.students) {
-        return this.mapStudentsToItems(response.data.students, true);
+      const parsed = ExternalStudentsResponseSchema.safeParse(response.data);
+      if (parsed.success) {
+        return this.mapStudentsToItems(parsed.data.students, true);
+      } else {
+        LOG.warn(
+          `Invalid external API response shape: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
+        );
       }
     } catch (error) {
       LOG.error(

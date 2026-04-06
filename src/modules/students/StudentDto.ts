@@ -20,5 +20,25 @@ export const GetStudentsQuerySchema = z.object({
     .refine((val) => !isNaN(val) && val > 0, 'limit must be a positive number'),
 });
 
+export const ExternalStudentSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string().email(),
+});
+
+export const ExternalStudentsResponseSchema = z.object({
+  count: z.number(),
+  students: z.array(ExternalStudentSchema),
+});
+
+export const StudentItemSchema = ExternalStudentSchema.extend({
+  isExternal: z.boolean(),
+});
+
 export type GetStudentsParams = z.infer<typeof GetStudentsParamsSchema>;
 export type GetStudentsQuery = z.infer<typeof GetStudentsQuerySchema>;
+export type ExternalStudent = z.infer<typeof ExternalStudentSchema>;
+export type StudentItem = z.infer<typeof StudentItemSchema>;
+export type ExternalStudentsResponse = z.infer<
+  typeof ExternalStudentsResponseSchema
+>;
