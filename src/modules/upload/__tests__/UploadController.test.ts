@@ -1,9 +1,15 @@
 /// <reference types="jest" />
 
-import { NextFunction, Request, Response } from 'express';
+import Express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
+
+jest.mock('formidable', () => ({
+  IncomingForm: jest.fn(),
+}));
+
+import request from 'supertest';
 
 jest.mock('../../../shared/config/logger', () => {
   return jest.fn().mockImplementation(() => ({
@@ -13,42 +19,58 @@ jest.mock('../../../shared/config/logger', () => {
   }));
 });
 
+type UploadedFile = {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  destination: string;
+  filename: string;
+  path: string;
+  size: number;
+  stream: NodeJS.ReadableStream;
+  buffer: Buffer;
+};
+
+const mockProcessCsvData = jest.fn<Promise<void>, [unknown[]]>();
+let mockUploadedFile: UploadedFile | undefined;
+
+jest.mock('../../../shared/config/multer', () => ({
+  __esModule: true,
+  default: {
+    single:
+      () =>
+      (
+        req: Express.Request,
+        res: Express.Response,
+        next: Express.NextFunction,
+      ) => {
+        if (mockUploadedFile) {
+          req.file = mockUploadedFile as never;
+        }
+        next();
+      },
+  },
+}));
+
+jest.mock('../UploadService', () => ({
+  UploadService: jest.fn().mockImplementation(() => ({
+    processCsvData: (data: unknown[]) => mockProcessCsvData(data),
+  })),
+}));
+
 // Mock convertCsvToJson so csv-parser (and formidable) are never touched
 const mockConvertCsvToJson = jest.fn<Promise<unknown[]>, [string]>();
 jest.mock('../../../shared/utils', () => ({
   convertCsvToJson: (filePath: string) => mockConvertCsvToJson(filePath),
 }));
 
-import { createUploadHandler } from '../UploadController';
-
-type MockRequest = Partial<Request> & {
-  file?: {
-    fieldname: string;
-    originalname: string;
-    encoding: string;
-    mimetype: string;
-    destination: string;
-    filename: string;
-    path: string;
-    size: number;
-    stream: NodeJS.ReadableStream;
-    buffer: Buffer;
-  };
-};
-
-type MockResponse = {
-  status: jest.Mock;
-  json: jest.Mock;
-  sendStatus: jest.Mock;
-  statusCode?: number;
-  body?: Record<string, unknown>;
-};
+import UploadController from '../UploadController';
 
 describe('UploadController', () => {
-  let processCsvData: jest.Mock;
   const tmpDir = '/tmp/school-administration-system-uploads';
 
-  const MOCK_FILE = {
+  const mockFile: UploadedFile = {
     fieldname: 'data',
     originalname: 'test.csv',
     encoding: '7bit',
@@ -65,29 +87,11 @@ describe('UploadController', () => {
     buffer: Buffer.alloc(0),
   };
 
-  const createResponse = (): MockResponse => {
-    const res: MockResponse = {
-      status: jest.fn(),
-      json: jest.fn(),
-      sendStatus: jest.fn(),
-    };
+  const createApp = () => {
+    const app = Express();
+    app.use('/', UploadController);
 
-    res.status.mockImplementation((statusCode: number) => {
-      res.statusCode = statusCode;
-      return res;
-    });
-
-    res.json.mockImplementation((body: Record<string, unknown>) => {
-      res.body = body;
-      return res;
-    });
-
-    res.sendStatus.mockImplementation((statusCode: number) => {
-      res.statusCode = statusCode;
-      return res;
-    });
-
-    return res;
+    return app;
   };
 
   beforeAll(() => {
@@ -98,30 +102,24 @@ describe('UploadController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    processCsvData = jest.fn().mockResolvedValue(undefined);
+    mockProcessCsvData.mockResolvedValue(undefined);
+    mockUploadedFile = undefined;
   });
 
   it('should return 400 when no file is uploaded', async () => {
-    const req: MockRequest = {};
-    const res = createResponse();
-    const handler = createUploadHandler({ processCsvData });
+    const app = createApp();
 
-    await handler(
-      req as Request,
-      res as unknown as Response,
-      jest.fn() as unknown as NextFunction,
-    );
+    const res = await request(app).post('/upload');
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.body?.error).toBe('No file uploaded');
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'No file uploaded' });
   });
 
   it('should return 204 when a valid CSV is uploaded', async () => {
-    const req: MockRequest = { file: MOCK_FILE };
-    const res = createResponse();
-    const handler = createUploadHandler({ processCsvData });
+    const app = createApp();
+    mockUploadedFile = mockFile;
 
-    fs.writeFileSync(MOCK_FILE.path, 'fake-csv-content');
+    fs.writeFileSync(mockFile.path, 'fake-csv-content');
     mockConvertCsvToJson.mockResolvedValue([
       {
         teacherEmail: 'teacher1@gmail.com',
@@ -136,72 +134,54 @@ describe('UploadController', () => {
       },
     ]);
 
-    await handler(
-      req as Request,
-      res as unknown as Response,
-      jest.fn() as unknown as NextFunction,
-    );
+    const res = await request(app).post('/upload');
 
-    expect(processCsvData).toHaveBeenCalledTimes(1);
-    expect(res.sendStatus).toHaveBeenCalledWith(204);
+    expect(res.status).toBe(204);
+    expect(mockProcessCsvData).toHaveBeenCalledTimes(1);
   });
 
   it('should return 500 when CSV validation fails', async () => {
-    const req: MockRequest = { file: MOCK_FILE };
-    const res = createResponse();
-    const handler = createUploadHandler({ processCsvData });
+    const app = createApp();
+    mockUploadedFile = mockFile;
 
-    fs.writeFileSync(MOCK_FILE.path, 'fake-csv-content');
+    fs.writeFileSync(mockFile.path, 'fake-csv-content');
     mockConvertCsvToJson.mockRejectedValue(
       new Error('CSV validation failed:\nRow 1: teacherEmail: Invalid email'),
     );
 
-    await handler(
-      req as Request,
-      res as unknown as Response,
-      jest.fn() as unknown as NextFunction,
-    );
+    const res = await request(app).post('/upload');
 
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.body?.error).toBe('Failed to process file upload');
-    expect(String(res.body?.details)).toContain('CSV validation failed');
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Failed to process file upload');
+    expect(String(res.body.details)).toContain('CSV validation failed');
   });
 
   it('should return 500 when processCsvData throws', async () => {
-    const req: MockRequest = { file: MOCK_FILE };
-    const res = createResponse();
-    const handler = createUploadHandler({
-      processCsvData: jest.fn().mockRejectedValue(new Error('DB error')),
-    });
+    const app = createApp();
+    mockUploadedFile = mockFile;
 
-    fs.writeFileSync(MOCK_FILE.path, 'fake-csv-content');
+    fs.writeFileSync(mockFile.path, 'fake-csv-content');
     mockConvertCsvToJson.mockResolvedValue([]);
+    mockProcessCsvData.mockRejectedValue(new Error('DB error'));
 
-    await handler(
-      req as Request,
-      res as unknown as Response,
-      jest.fn() as unknown as NextFunction,
-    );
+    const res = await request(app).post('/upload');
 
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.body?.error).toBe('Failed to process file upload');
-    expect(res.body?.details).toBe('DB error');
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({
+      error: 'Failed to process file upload',
+      details: 'DB error',
+    });
   });
 
   it('should clean up uploaded file after processing', async () => {
-    const req: MockRequest = { file: MOCK_FILE };
-    const res = createResponse();
-    const handler = createUploadHandler({ processCsvData });
+    const app = createApp();
+    mockUploadedFile = mockFile;
 
-    fs.writeFileSync(MOCK_FILE.path, 'fake-csv-content');
+    fs.writeFileSync(mockFile.path, 'fake-csv-content');
     mockConvertCsvToJson.mockResolvedValue([]);
 
-    await handler(
-      req as Request,
-      res as unknown as Response,
-      jest.fn() as unknown as NextFunction,
-    );
+    await request(app).post('/upload');
 
-    expect(fs.existsSync(MOCK_FILE.path)).toBe(false);
+    expect(fs.existsSync(mockFile.path)).toBe(false);
   });
 });
