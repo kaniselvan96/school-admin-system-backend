@@ -4,8 +4,7 @@ import {
   Student,
   Class,
   Subject,
-  ClassStudent,
-  TeacherClass,
+  ClassStudentTeacher,
 } from '../../shared/models';
 import Logger from '../../shared/config/logger';
 
@@ -15,11 +14,17 @@ export class UploadService {
   private async upsertBatch<T>(
     model: any,
     data: Map<string, T>,
-    fields: string[],
+    uniqueFields: string[],
   ): Promise<void> {
-    for (const item of data.values()) {
-      await model.upsert(item, { fields });
+    if (data.size === 0) {
+      return;
     }
+
+    const dataArray = Array.from(data.values());
+    await model.bulkCreate(dataArray, {
+      updateOnDuplicate: Object.keys(dataArray[0] || {}),
+      ignoreDuplicates: false,
+    });
   }
 
   private parseCsv(csvData: CsvItem[]) {
@@ -37,8 +42,7 @@ export class UploadService {
       }
     >();
     const subjects = new Map<string, { code: string; name: string }>();
-    const classStudentLinks = new Set<string>(); //class-student relationships
-    const teacherClassLinks = new Set<string>(); //teacher-class relationships
+    const classStudentTeacherLinks = new Set<string>(); // Teacher teaches Student in Class for Subject
 
     for (const [index, item] of csvData.entries()) {
       // Validate all required fields as per model definitions
@@ -101,14 +105,16 @@ export class UploadService {
         });
       }
 
-      // Track teacher-class relationships
-      if (item.classCode && item.teacherEmail) {
-        teacherClassLinks.add(`${item.teacherEmail}:${item.classCode}`);
-      }
-
-      // Track class-student relationships
-      if (item.classCode && item.studentEmail) {
-        classStudentLinks.add(`${item.classCode}:${item.studentEmail}`);
+      // Track atomic ClassStudentTeacher relationship: Teacher teaches Student in Class for Subject
+      if (
+        item.teacherEmail &&
+        item.studentEmail &&
+        item.classCode &&
+        item.subjectCode
+      ) {
+        classStudentTeacherLinks.add(
+          `${item.teacherEmail}:${item.studentEmail}:${item.classCode}:${item.subjectCode}`,
+        );
       }
     }
     return {
@@ -116,8 +122,7 @@ export class UploadService {
       students,
       classes,
       subjects,
-      classStudentLinks,
-      teacherClassLinks,
+      classStudentTeacherLinks,
     };
   }
 
@@ -156,77 +161,82 @@ export class UploadService {
         );
       }
 
-      // Create teacher-class relationships
-      for (const link of parsedData.teacherClassLinks) {
-        const [teacherEmail, classCode] = link.split(':');
+      // Create ClassStudentTeacher relationships: Teacher teaches Student in Class for Subject
+      for (const link of parsedData.classStudentTeacherLinks) {
+        const [teacherEmail, studentEmail, classCode, subjectCode] =
+          link.split(':');
+
         const teacher = await Teacher.findOne({
           where: { email: teacherEmail },
         });
+        const student = await Student.findOne({
+          where: { email: studentEmail },
+        });
         const classInstance = await Class.findOne({
           where: { code: classCode },
+        });
+        const subject = await Subject.findOne({
+          where: { code: subjectCode },
         });
 
         if (!teacher) {
           LOG.warn(`Teacher not found for email: ${teacherEmail}`);
+          continue;
         }
-        if (!classInstance) {
-          LOG.warn(`Class not found for code: ${classCode}`);
-        }
-
-        if (teacher && classInstance) {
-          LOG.info(
-            `Creating teacher-class relationship for teacher: ${teacherEmail} and class: ${classCode}...`,
-          );
-          await TeacherClass.findOrCreate({
-            where: {
-              teacherId: teacher.id,
-              classId: classInstance.id,
-            },
-            defaults: {
-              teacherId: teacher.id,
-              classId: classInstance.id,
-            },
-          });
-        }
-      }
-
-      // class-student relationships..Only creates if the record doesn't exist
-      for (const link of parsedData.classStudentLinks) {
-        const [classCode, studentEmail] = link.split(':');
-        const classInstance = await Class.findOne({
-          where: { code: classCode },
-        });
-        const studentInstance = await Student.findOne({
-          where: { email: studentEmail },
-        });
-
-        if (!classInstance) {
-          LOG.warn(`Class not found for code: ${classCode}`);
-        }
-        if (!studentInstance) {
+        if (!student) {
           LOG.warn(`Student not found for email: ${studentEmail}`);
+          continue;
+        }
+        if (!classInstance) {
+          LOG.warn(`Class not found for code: ${classCode}`);
+          continue;
+        }
+        if (!subject) {
+          LOG.warn(`Subject not found for code: ${subjectCode}`);
+          continue;
         }
 
-        if (classInstance && studentInstance) {
-          LOG.info(
-            `Finding or creating class-student relationship for class: ${classCode} and student: ${studentEmail}...`,
-          );
-          await ClassStudent.findOrCreate({
+        LOG.info(
+          `Creating ClassStudentTeacher relationship: teacher=${teacherEmail}, student=${studentEmail}, class=${classCode}, subject=${subjectCode}...`,
+        );
+        try {
+          await ClassStudentTeacher.findOrCreate({
             where: {
+              teacherId: teacher.id,
+              studentId: student.id,
               classId: classInstance.id,
-              studentId: studentInstance.id,
+              subjectId: subject.id,
             },
             defaults: {
+              teacherId: teacher.id,
+              studentId: student.id,
               classId: classInstance.id,
-              studentId: studentInstance.id,
+              subjectId: subject.id,
             },
           });
+        } catch (relationError) {
+          let relErrorMsg = '';
+          if (relationError instanceof Error) {
+            relErrorMsg = relationError.message;
+            // If it's a Sequelize ValidationError, get the detailed errors
+            if ('errors' in relationError) {
+              const errors = (relationError as any).errors;
+              if (Array.isArray(errors)) {
+                relErrorMsg +=
+                  ': ' +
+                  errors.map((e: any) => `${e.path}: ${e.message}`).join('; ');
+              }
+            }
+          } else {
+            relErrorMsg = String(relationError);
+          }
+          LOG.error(`Failed to create relationship: ${relErrorMsg}`);
+          throw relationError;
         }
       }
     } catch (error) {
-      LOG.error(
-        `Error uploading CSV data: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      LOG.error(`Error uploading CSV data: ${errorMsg}`);
       throw error;
     }
   }

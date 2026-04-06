@@ -2,8 +2,7 @@ import Teacher from './Teacher';
 import Student from './Student';
 import Class from './Class';
 import Subject from './Subject';
-import ClassStudent from './ClassStudent';
-import TeacherClass from './TeacherClass';
+import ClassStudentTeacher from './ClassStudentTeacher';
 import { setupAssociations } from './associations';
 
 // Setup associations
@@ -14,7 +13,6 @@ export {
   Student,
   Class,
   Subject,
-  ClassStudent,
-  TeacherClass,
+  ClassStudentTeacher,
   setupAssociations,
 };
