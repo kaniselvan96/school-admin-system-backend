@@ -14,7 +14,6 @@ export class UploadService {
   private async upsertBatch<T>(
     model: any,
     data: Map<string, T>,
-    uniqueFields: string[],
   ): Promise<void> {
     if (data.size === 0) {
       return;
@@ -45,7 +44,7 @@ export class UploadService {
     const classStudentTeacherLinks = new Set<string>(); // Teacher teaches Student in Class for Subject
     const studentSubjectClass = new Map<string, string>(); // Track which class a student takes each subject in
 
-    for (const [index, item] of csvData.entries()) {
+    for (const item of csvData) {
       // Validate: student can only take each subject in one class - latest data replaced
       const studentSubjectKey = `${item.studentEmail}:${item.subjectCode}`;
       const existingClass = studentSubjectClass.get(studentSubjectKey);
@@ -123,13 +122,13 @@ export class UploadService {
       const parsedData = this.parseCsv(csvData);
 
       LOG.info(`Upserting ${parsedData.teachers.size} teachers...`);
-      await this.upsertBatch(Teacher, parsedData.teachers, ['email']);
+      await this.upsertBatch(Teacher, parsedData.teachers);
 
       LOG.info(`Upserting ${parsedData.students.size} students...`);
-      await this.upsertBatch(Student, parsedData.students, ['email']);
+      await this.upsertBatch(Student, parsedData.students);
 
       LOG.info(`Upserting ${parsedData.subjects.size} subjects...`);
-      await this.upsertBatch(Subject, parsedData.subjects, ['code']);
+      await this.upsertBatch(Subject, parsedData.subjects);
 
       // Upsert classes with subject associations
       for (const classData of parsedData.classes.values()) {

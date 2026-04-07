@@ -4,12 +4,12 @@ import Express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { Readable } from 'stream';
+import request from 'supertest';
 
 jest.mock('formidable', () => ({
   IncomingForm: jest.fn(),
 }));
 
-import request from 'supertest';
 
 jest.mock('../../../shared/config/logger', () => {
   return jest.fn().mockImplementation(() => ({
@@ -40,16 +40,16 @@ jest.mock('../../../shared/config/multer', () => ({
   default: {
     single:
       () =>
-      (
-        req: Express.Request,
-        res: Express.Response,
-        next: Express.NextFunction,
-      ) => {
-        if (mockUploadedFile) {
-          req.file = mockUploadedFile as never;
-        }
-        next();
-      },
+        (
+          req: Express.Request,
+          res: Express.Response,
+          next: Express.NextFunction,
+        ) => {
+          if (mockUploadedFile) {
+            req.file = mockUploadedFile as never;
+          }
+          next();
+        },
   },
 }));
 
