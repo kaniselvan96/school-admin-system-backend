@@ -1,118 +1,320 @@
 {
-	"info": {
-		"_postman_id": "ba397eb1-db3d-4e2c-91f4-174b4e0ce7f5",
-		"name": "school-administration-system",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "File Upload",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "formdata",
-					"formdata": [
-						{
-							"key": "data",
-							"contentType": "multipart/form-data",
-							"type": "file",
-							"src": []
-						}
-					],
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "localhost:3000/api/upload",
-					"host": [
-						"localhost"
-					],
-					"port": "3000",
-					"path": [
-						"api",
-						"upload"
-					]
-				},
-				"description": "Upload file to school-administration-system"
-			},
-			"response": []
-		},
-		{
-			"name": "Healtcheck",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "formdata",
-					"formdata": [
-						{
-							"key": "data",
-							"contentType": "multipart/form-data",
-							"type": "file",
-							"src": []
-						}
-					],
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "localhost:3000/api/healthcheck",
-					"host": [
-						"localhost"
-					],
-					"port": "3000",
-					"path": [
-						"api",
-						"healthcheck"
-					]
-				},
-				"description": "Healthcheck for application"
-			},
-			"response": []
-		},
-		{
-			"name": "Get Student List (External)",
-			"request": {
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "localhost:5000/students?class=2&offset=1&limit=2",
-					"host": [
-						"localhost"
-					],
-					"port": "5000",
-					"path": [
-						"students"
-					],
-					"query": [
-						{
-							"key": "class",
-							"value": "2"
-						},
-						{
-							"key": "offset",
-							"value": "1"
-						},
-						{
-							"key": "limit",
-							"value": "2"
-						}
-					]
-				},
-				"description": "Retrieving student list from external"
-			},
-			"response": []
-		}
-	],
-	"protocolProfileBehavior": {}
+  "info": {
+    "_postman_id": "fcf80c5e-307b-4f94-87af-bc1ee538a2fd",
+    "name": "school-administration-system",
+    "description": "This collection contains a focused set of API requests for the school-administration-system service running locally. It supports quick validation of the application’s availability and core school operations, including:\n\n- System checks: confirm the service is running via a healthcheck endpoint.\n    \n- Student data retrieval: fetch student lists both from an external student service and by internal class code (with pagination).\n    \n- Class management: update class details (e.g., class name) for a given class code.\n    \n- Reporting: generate a workload report for operational visibility.\n    \n- File handling: upload files to the system.\n    \n\nUse this collection to manually test and verify key endpoints during local development (e.g., localhost:3000 and localhost:5001) and to reproduce common API flows end-to-end.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25447656"
+  },
+  "item": [
+    {
+      "name": "Healtcheck",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response time is < 2000ms', function () {",
+              "  pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "{{baseUrl}}/healthcheck",
+          "host": ["{{baseUrl}}"],
+          "path": ["healthcheck"]
+        },
+        "description": "Healthcheck for application"
+      },
+      "response": []
+    },
+    {
+      "name": "Get Student List (External)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is JSON (when body is present)', function () {",
+              "  pm.response.to.be.withBody;",
+              "  pm.response.to.be.json;",
+              "});",
+              "",
+              "pm.test('Response is non-empty when applicable', function () {",
+              "  let json;",
+              "  try {",
+              "    json = pm.response.json();",
+              "  } catch (e) {",
+              "    return;",
+              "  }",
+              "",
+              "  if (Array.isArray(json)) {",
+              "    pm.expect(json.length).to.be.above(0);",
+              "    return;",
+              "  }",
+              "",
+              "  if (json && typeof json === 'object') {",
+              "    const candidate = Array.isArray(json.data) ? json.data",
+              "      : Array.isArray(json.items) ? json.items",
+              "      : null;",
+              "",
+              "    if (candidate) {",
+              "      pm.expect(candidate.length).to.be.above(0);",
+              "    }",
+              "  }",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{externalBaseUrl}}/students?class=P1-1&offset=0&limit=500",
+          "host": ["{{externalBaseUrl}}"],
+          "path": ["students"],
+          "query": [
+            {
+              "key": "class",
+              "value": "P1-1"
+            },
+            {
+              "key": "offset",
+              "value": "0"
+            },
+            {
+              "key": "limit",
+              "value": "500"
+            }
+          ]
+        },
+        "description": "Retrieving student list from external"
+      },
+      "response": []
+    },
+    {
+      "name": "Upload",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200, 201, or 204', function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "data",
+              "type": "file",
+              "uuid": "206742ad-1783-4e77-9f6f-5ccef7b354ba",
+              "src": "interview-package-ts/data.sample.csv"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/upload",
+          "host": ["{{baseUrl}}"],
+          "path": ["upload"]
+        },
+        "description": "Upload file to school-administration-system"
+      },
+      "response": []
+    },
+    {
+      "name": "Students by ClassCode",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is JSON (when body is present)', function () {",
+              "  pm.response.to.be.withBody;",
+              "  pm.response.to.be.json;",
+              "});",
+              "",
+              "pm.test('Response is non-empty when applicable', function () {",
+              "  let json;",
+              "  try {",
+              "    json = pm.response.json();",
+              "  } catch (e) {",
+              "    return;",
+              "  }",
+              "",
+              "  if (Array.isArray(json)) {",
+              "    pm.expect(json.length).to.be.above(0);",
+              "    return;",
+              "  }",
+              "",
+              "  if (json && typeof json === 'object') {",
+              "    const candidate = Array.isArray(json.data) ? json.data",
+              "      : Array.isArray(json.items) ? json.items",
+              "      : null;",
+              "",
+              "    if (candidate) {",
+              "      pm.expect(candidate.length).to.be.above(0);",
+              "    }",
+              "  }",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/class/:classCode/students?offset=0&limit=500",
+          "host": ["{{baseUrl}}"],
+          "path": ["class", ":classCode", "students"],
+          "query": [
+            {
+              "key": "offset",
+              "value": "0"
+            },
+            {
+              "key": "limit",
+              "value": "500"
+            }
+          ],
+          "variable": [
+            {
+              "key": "classCode",
+              "value": "P1-1"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update ClassName",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"className\":\"P1-Integrity-New\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/class/:classCode",
+          "host": ["{{baseUrl}}"],
+          "path": ["class", ":classCode"],
+          "variable": [
+            {
+              "key": "classCode",
+              "value": "P1-1"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Workload Report",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/reports/workload",
+          "host": ["{{baseUrl}}"],
+          "path": ["reports", "workload"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "externalBaseUrl",
+      "value": "http://localhost:5001"
+    },
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    }
+  ]
 }
