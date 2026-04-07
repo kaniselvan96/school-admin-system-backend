@@ -83,7 +83,7 @@ describe('StudentService', () => {
           isExternal: false,
         },
       ],
-      count: 2,
+      count: 3,
     });
   });
 
