@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug TypeScript",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/typescript/node_modules/.bin/ts-node",
+      "args": ["src/server.ts"],
+      "cwd": "${workspaceFolder}/typescript",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "PORT": "3001"
+      }
+    }
+  ]
+}
