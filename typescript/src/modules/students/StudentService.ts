@@ -132,8 +132,8 @@ export class StudentService {
         .slice(offset, offset + limit);
 
       return {
+        count: combinedStudents.length,
         students: allStudents,
-        count: allStudents.length,
       };
     } catch (error) {
       LOG.error(
