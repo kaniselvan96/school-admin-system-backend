@@ -16,6 +16,14 @@ Node.js v24.14.1.
 
 - Testing: Jest, ts-jest, Supertest, @types/jest, @types/supertest.
 
+## Run Locally
+
+1. `cd typescript`
+2. `npm install`
+3. `npm run start:services` to start MySQL and the helper service
+4. `npm start` to launch the API at `http://localhost:3000`
+5. `npm run start:dev` for automatic restarts
+
 ## Run Tests
 
 From the `typescript` directory:
@@ -25,14 +33,6 @@ npm test
 ```
 
 This runs the Jest test suite.
-
-## Run Locally
-
-1. `cd typescript`
-2. `npm install`
-3. `npm run start:services` to start MySQL and the helper service
-4. `npm start` to launch the API at `http://localhost:3000`
-5. `npm run start:dev` for automatic restarts
 
 ## Basic Behavior
 
