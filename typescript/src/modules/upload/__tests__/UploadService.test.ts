@@ -112,6 +112,45 @@ describe('UploadService', () => {
       expect(studentData[0].email).toBe('student1@gmail.com');
     });
 
+    it('should keep latest values for duplicate keys', async () => {
+      const latestRow: CsvItemDto = {
+        ...validRow,
+        teacherName: 'Teacher 1 Updated',
+        studentName: 'Student 1 Updated',
+        subjectName: 'Maths Updated',
+        classname: 'P1 Integrity Updated',
+        toDelete: '1',
+      };
+
+      (mockSubject.findOne as jest.Mock).mockResolvedValue({ id: 1 });
+      (mockClass.findOne as jest.Mock).mockResolvedValue({ id: 1 });
+      (mockTeacher.findOne as jest.Mock).mockResolvedValue({ id: 1 });
+      (mockStudent.findOne as jest.Mock).mockResolvedValue({ id: 1 });
+      (mockCST.findOrCreate as jest.Mock).mockResolvedValue([{}, true]);
+
+      await uploadService.processCsvData([validRow, latestRow]);
+
+      const teacherData = (mockTeacher.bulkCreate as jest.Mock).mock
+        .calls[0][0];
+      expect(teacherData).toHaveLength(1);
+      expect(teacherData[0].name).toBe('Teacher 1 Updated');
+
+      const studentData = (mockStudent.bulkCreate as jest.Mock).mock
+        .calls[0][0];
+      expect(studentData).toHaveLength(1);
+      expect(studentData[0].name).toBe('Student 1 Updated');
+      expect(studentData[0].toDelete).toBe(1);
+
+      const subjectData = (mockSubject.bulkCreate as jest.Mock).mock
+        .calls[0][0];
+      expect(subjectData).toHaveLength(1);
+      expect(subjectData[0].name).toBe('Maths Updated');
+
+      const classUpsertPayload = (mockClass.upsert as jest.Mock).mock
+        .calls[0][0];
+      expect(classUpsertPayload.name).toBe('P1 Integrity Updated');
+    });
+
     it('should set toDelete to 1 when csv value is "1"', async () => {
       const deleteRow: CsvItemDto = { ...validRow, toDelete: '1' };
 

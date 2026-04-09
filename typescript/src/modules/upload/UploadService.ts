@@ -68,39 +68,31 @@ export class UploadService {
 
       studentSubjectClass.set(studentSubjectKey, item.classCode);
 
-      // Process teachers
-      if (!teachers.has(item.teacherEmail)) {
-        teachers.set(item.teacherEmail, {
-          name: item.teacherName,
-          email: item.teacherEmail,
-        });
-      }
+      // Process teachers (latest row wins for duplicate email)
+      teachers.set(item.teacherEmail, {
+        name: item.teacherName,
+        email: item.teacherEmail,
+      });
 
-      // Process students
-      if (!students.has(item.studentEmail)) {
-        students.set(item.studentEmail, {
-          email: item.studentEmail,
-          name: item.studentName,
-          toDelete: Number(item.toDelete) === 1 ? 1 : 0,
-        });
-      }
+      // Process students (latest row wins for duplicate email)
+      students.set(item.studentEmail, {
+        email: item.studentEmail,
+        name: item.studentName,
+        toDelete: Number(item.toDelete) === 1 ? 1 : 0,
+      });
 
-      // Process subjects
-      if (!subjects.has(item.subjectCode)) {
-        subjects.set(item.subjectCode, {
-          code: item.subjectCode,
-          name: item.subjectName,
-        });
-      }
+      // Process subjects (latest row wins for duplicate code)
+      subjects.set(item.subjectCode, {
+        code: item.subjectCode,
+        name: item.subjectName,
+      });
 
-      // Process classes
-      if (!classes.has(item.classCode)) {
-        classes.set(item.classCode, {
-          code: item.classCode,
-          name: item.classname,
-          subjectCode: item.subjectCode,
-        });
-      }
+      // Process classes (latest row wins for duplicate class code)
+      classes.set(item.classCode, {
+        code: item.classCode,
+        name: item.classname,
+        subjectCode: item.subjectCode,
+      });
 
       // Track atomic ClassStudentTeacher relationship: Teacher teaches Student in Class for Subject
       classStudentTeacherLinks.add(

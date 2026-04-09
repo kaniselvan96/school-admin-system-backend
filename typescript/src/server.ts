@@ -5,7 +5,7 @@ import App from './app';
 
 const MAX_RETRY = 20;
 const LOG = new Logger('server.js');
-const { PORT = 3000 } = process.env;
+const { PORT = 3002 } = process.env;
 
 const startApplication = async (retryCount: number) => {
   try {
